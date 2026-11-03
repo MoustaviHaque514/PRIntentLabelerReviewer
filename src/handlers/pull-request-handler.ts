@@ -29,6 +29,7 @@ import { describeLlmFailure } from "../llm/failure-message.js";
 import type { BugReviewResult } from "../domain/code-review.js";
 import type { BugReviewExpert } from "../review/bug-review-expert.js";
 import { createEnvironmentBugReviewExpert } from "../review/runtime.js";
+import { publishBugReview } from "../github/review-publisher.js";
 
 export async function handlePullRequestEvent(
   context: Context<"pull_request">,
@@ -266,6 +267,29 @@ export async function handlePullRequestEvent(
             },
             "Bug fix routed to specialized Gemini review expert",
           );
+          if (bugReview.findings.length > 0) {
+            try {
+              await publishBugReview(context, prData, bugReview);
+              context.log.info(
+                {
+                  ...logContext,
+                  reviewFindings: bugReview.findings.length,
+                },
+                "Inline bug review published",
+              );
+            } catch (publishError) {
+              context.log.warn(
+                {
+                  ...logContext,
+                  error:
+                    publishError instanceof Error
+                      ? publishError.message
+                      : publishError,
+                },
+                "Failed to publish inline bug review",
+              );
+            }
+          }
         } catch (reviewError) {
           bugReviewFailure = describeLlmFailure(reviewError);
           context.log.warn(
