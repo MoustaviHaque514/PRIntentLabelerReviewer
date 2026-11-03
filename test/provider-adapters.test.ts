@@ -6,6 +6,7 @@ import { PerplexityProvider } from "../src/llm/perplexity-provider.js";
 import { buildPullRequestLlmContext } from "../src/llm/pr-context.js";
 import type { PullRequestData } from "../src/domain/pull-request-data.js";
 import { LLM_RESPONSE_TOKEN_RESERVE } from "../src/utils/constants.js";
+import { GeminiBugReviewExpert } from "../src/review/gemini-bug-review-expert.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -114,6 +115,43 @@ describe("adaptateurs LLM", () => {
         }),
       }),
     );
+  });
+
+  it("demande à l'expert Gemini une revue structurée du bug fix", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      summary: "La correction est correcte.",
+                      findings: [],
+                    }),
+                  },
+                ],
+              },
+              finishReason: "STOP",
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await new GeminiBugReviewExpert(
+      "gemini-review-key",
+      "gemini-test",
+    ).reviewBugFix(buildPullRequestLlmContext(prData));
+
+    expect(result).toMatchObject({ verdict: "approved", findings: [] });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+      generationConfig: { responseMimeType: string };
+    };
+    expect(body.generationConfig.responseMimeType).toBe("application/json");
   });
 
   it("appelle l’endpoint Sonar sélectionné pour Perplexity", async () => {
