@@ -16,7 +16,9 @@ Lorsqu'une Pull Request est ouverte, modifiée ou synchronisée, l'application :
 4. analyse la PR avec le fournisseur LLM configuré pour l'installation;
 5. publie ou met à jour un commentaire avec les labels proposés, leur niveau
    de confiance et une justification;
-6. applique éventuellement les labels selon le mode configuré.
+6. si l'intention `bug` est retenue, route le diff vers l'expert Gemini et
+   ajoute son verdict au même commentaire;
+7. applique éventuellement les labels selon le mode configuré.
 
 ## Stack
 
@@ -38,6 +40,8 @@ Lorsqu'une Pull Request est ouverte, modifiée ou synchronisée, l'application :
 - chiffrement des clés API avec AES-256-GCM;
 - modification, rotation et suppression d'une configuration;
 - commentaire de PR mis à jour sans duplication;
+- revue spécialisée Gemini pour les PR classées `bug`;
+- commentaires inline GitHub lorsque des corrections sont proposées;
 - modes manuel et automatique d'application des labels.
 
 ## Fournisseurs LLM
@@ -147,7 +151,7 @@ Le fichier `app.yml` décrit les événements et permissions nécessaires :
 | ------------- | ------------------------------------------------------------ |
 | Événements    | `Pull request`, `Check run`, `Issue comment`, `Installation` |
 | Metadata      | Read                                                         |
-| Pull requests | Read                                                         |
+| Pull requests | Read and write                                               |
 | Issues        | Read and write                                               |
 | Checks        | Read and write                                               |
 
@@ -216,6 +220,14 @@ PUBLIC_BASE_URL=http://localhost:3000
 GROQ_API_KEY=remplacer-par-une-cle-groq-ou-laisser-vide
 GROQ_MODEL=llama-3.1-8b-instant
 
+# Repli du classifieur lorsque Groq n'est pas configuré
+GEMINI_API_KEY=remplacer-par-une-cle-gemini
+GEMINI_MODEL=gemini-3.5-flash-lite
+
+# Expert spécialisé appelé après une classification "bug"
+GEMINI_REVIEW_API_KEY=remplacer-par-une-cle-gemini
+GEMINI_REVIEW_MODEL=gemini-3.5-flash-lite
+
 # ============================================================
 # Comportement de l'application
 # suggest | auto-high | auto-all
@@ -244,6 +256,10 @@ Rôle des variables :
 | `PUBLIC_BASE_URL`       | Oui         | URL publique ou locale utilisée par l'interface          |
 | `GROQ_API_KEY`          | Non         | Fournisseur de repli si aucune configuration n'existe    |
 | `GROQ_MODEL`            | Non         | Modèle Groq de repli                                     |
+| `GEMINI_API_KEY`        | Non         | Repli Gemini si Groq n'est pas configuré                 |
+| `GEMINI_MODEL`          | Non         | Modèle Gemini utilisé par le classifieur                 |
+| `GEMINI_REVIEW_API_KEY` | Pour revue  | Clé dédiée facultative; sinon `GEMINI_API_KEY` est utilisée |
+| `GEMINI_REVIEW_MODEL`   | Non         | Modèle utilisé par l'expert bug                          |
 | `LABEL_MODE`            | Oui         | Contrôle l'application automatique des labels            |
 | `LOG_LEVEL`             | Non         | Définit le niveau de détail des journaux                 |
 | `NODE_ENV`              | Oui         | Sélectionne le comportement développement ou production |
