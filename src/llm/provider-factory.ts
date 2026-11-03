@@ -77,15 +77,32 @@ export function createLlmProvider(
 export function createEnvironmentLlmProvider(
   onUsage?: (metrics: LlmUsageMetrics) => void,
 ): LlmProvider | null {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey || apiKey === "REMPLACER_PAR_VOTRE_CLE") return null;
+  const groqApiKey = process.env.GROQ_API_KEY?.trim();
+  if (groqApiKey && groqApiKey !== "REMPLACER_PAR_VOTRE_CLE") {
+    return createLlmProvider(
+      {
+        provider: "groq",
+        apiKey: groqApiKey,
+        model: process.env.GROQ_MODEL ?? "llama-3.1-8b-instant",
+      },
+      onUsage,
+    );
+  }
 
-  return createLlmProvider(
-    {
-      provider: "groq",
-      apiKey,
-      model: process.env.GROQ_MODEL ?? "llama-3.1-8b-instant",
-    },
-    onUsage,
-  );
+  const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+  if (geminiApiKey && geminiApiKey !== "REMPLACER_PAR_VOTRE_CLE") {
+    return createLlmProvider(
+      {
+        provider: "gemini",
+        apiKey: geminiApiKey,
+        model:
+          process.env.GEMINI_MODEL ??
+          process.env.GEMINI_REVIEW_MODEL ??
+          "gemini-3.5-flash-lite",
+      },
+      onUsage,
+    );
+  }
+
+  return null;
 }

@@ -90,7 +90,9 @@ export async function handlePullRequestEvent(
           );
         }
       } catch (configurationError) {
-        provider = null;
+        // Une indisponibilité de PostgreSQL ne doit pas neutraliser la
+        // configuration locale.
+        provider = createEnvironmentLlmProvider(onUsage);
         context.log.warn(
           {
             ...logContext,
@@ -100,7 +102,7 @@ export async function handlePullRequestEvent(
                 ? configurationError.message
                 : configurationError,
           },
-          "Failed to load installation LLM configuration",
+          "Failed to load installation LLM configuration; using environment fallback",
         );
       }
     }
