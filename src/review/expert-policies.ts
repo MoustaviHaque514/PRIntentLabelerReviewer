@@ -84,3 +84,30 @@ registerExpertPolicy({
 - Report mismatched lockfiles, accidental major upgrades, missing peer constraints or unused dependency edits.
 - Do not treat changelog text from upstream packages as a bug fix implemented by this repository.`,
 });
+
+registerExpertPolicy({
+  intent: "performance",
+  roleTitle: "performance Pull Requests",
+  classifiedAs: "a performance improvement",
+  reviewPolicy: `- Verify that the change actually improves time, memory or resource use in the visible diff.
+- Report remaining quadratic paths, missing caches, extra allocations or claims without supporting code.
+- Do not request unrelated architecture rewrites.`,
+});
+
+registerExpertPolicy({
+  intent: "security",
+  roleTitle: "security Pull Requests",
+  classifiedAs: "a security-related change",
+  reviewPolicy: `- Verify authentication, authorization, secret handling and input validation in the visible diff.
+- Report remaining trust-boundary gaps, leaked secrets, missing checks or bypasses.
+- Do not report generic hardening ideas unsupported by the changed code.`,
+});
+
+registerExpertPolicy({
+  intent: "breaking-change",
+  roleTitle: "breaking-change Pull Requests",
+  classifiedAs: "a breaking change",
+  reviewPolicy: `- Verify that incompatibilities are real, explicit and reflected in public contracts.
+- Report silent removals, renamed APIs without migration notes, or incomplete call-site updates in the diff.
+- Do not treat an internal refactor as breaking unless a public contract changed.`,
+});

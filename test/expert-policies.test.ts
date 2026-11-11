@@ -20,4 +20,16 @@ describe("expert policies", () => {
     expect(getExpertPolicy("ci-cd")?.roleTitle).toContain("CI/CD");
     expect(getExpertPolicy("dependencies")?.reviewPolicy).toContain("lockfile");
   });
+
+  it("enregistre les experts performance, security et breaking-change", () => {
+    expect(getExpertPolicy("performance")?.classifiedAs).toContain(
+      "performance",
+    );
+    expect(getExpertPolicy("security")?.reviewPolicy).toContain(
+      "authentication",
+    );
+    expect(getExpertPolicy("breaking-change")?.roleTitle).toContain(
+      "breaking-change",
+    );
+  });
 });
