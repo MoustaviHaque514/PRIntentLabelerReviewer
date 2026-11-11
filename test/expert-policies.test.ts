@@ -8,4 +8,11 @@ describe("expert policies", () => {
       "preserves observable behaviour",
     );
   });
+
+  it("enregistre les experts documentation et tests", () => {
+    expect(getExpertPolicy("documentation")?.classifiedAs).toContain(
+      "documentation",
+    );
+    expect(getExpertPolicy("tests")?.reviewPolicy).toContain("assertions");
+  });
 });

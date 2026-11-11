@@ -48,3 +48,21 @@ registerExpertPolicy({
 - Report accidental behaviour changes, broken call sites, incomplete extractions or duplicated logic left behind.
 - Do not request stylistic rewrites unrelated to the refactor's stated goal.`,
 });
+
+registerExpertPolicy({
+  intent: "documentation",
+  roleTitle: "documentation Pull Requests",
+  classifiedAs: "a documentation change",
+  reviewPolicy: `- Verify that the documentation matches the visible change and remains accurate.
+- Report missing, contradictory or outdated explanations, broken references and examples that cannot work as written.
+- Do not request code refactors when the Pull Request is documentation-only.`,
+});
+
+registerExpertPolicy({
+  intent: "tests",
+  roleTitle: "test-suite Pull Requests",
+  classifiedAs: "a test-only change",
+  reviewPolicy: `- Verify that the tests assert the intended behaviour and would fail for the bug or contract they claim to cover.
+- Report missing assertions, tests that cannot fail, brittle setup, or coverage holes in the changed suite.
+- Do not request production-code features unless the tests themselves are incorrect.`,
+});
