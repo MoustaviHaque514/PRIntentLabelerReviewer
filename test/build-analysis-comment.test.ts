@@ -140,4 +140,58 @@ describe("buildAnalysisComment", () => {
     expect(result).toContain("- [ ] `🤖 feature`");
     expect(result).toContain("1 label(s) actuellement appliqué(s) : `🤖 bug`.");
   });
+
+  it("affiche un verdict positif quand l'expert bug ne trouve aucune erreur", () => {
+    const result = buildAnalysisComment(
+      baseData,
+      contextFor(baseData),
+      {
+        suggestions: [
+          { name: "bug", confidence: 0.95, reason: "corrige le calcul" },
+        ],
+        summary: "Corrige le calcul.",
+      },
+      [],
+      null,
+      {
+        verdict: "approved",
+        summary: "La correction couvre correctement le cas limite.",
+        findings: [],
+      },
+    );
+
+    expect(result).toContain("Revue spécialisée — Bug");
+    expect(result).toContain("Verdict : correction validée");
+    expect(result).toContain("Aucun changement supplémentaire");
+  });
+
+  it("référence les lignes du code dans la conversation", () => {
+    const result = buildAnalysisComment(
+      baseData,
+      contextFor(baseData),
+      null,
+      [],
+      null,
+      {
+        verdict: "changes-requested",
+        summary: "Un cas limite reste incorrect.",
+        findings: [
+          {
+            file: "src/auth/login.ts",
+            startLine: 4,
+            endLine: 4,
+            severity: "error",
+            message: "La valeur vide reste acceptée.",
+            suggestion: "Rejeter la valeur vide avant la validation.",
+          },
+        ],
+      },
+    );
+
+    expect(result).toContain("Verdict : changements demandés");
+    expect(result).toContain(
+      "https://github.com/org/test-repo/blob/abc123/src/auth/login.ts#L4",
+    );
+    expect(result).toContain("Changement proposé");
+  });
 });

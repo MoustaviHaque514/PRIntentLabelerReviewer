@@ -26,10 +26,15 @@ import type { LlmUsageMetrics } from "../llm/openai-compatible-provider.js";
 import { getLlmConfigurationService } from "../configuration/runtime.js";
 import { CLASSIFICATION_PROMPT_VERSION } from "../llm/prompt-builder.js";
 import { describeLlmFailure } from "../llm/failure-message.js";
+import type { BugReviewResult } from "../domain/code-review.js";
+import type { BugReviewExpert } from "../review/bug-review-expert.js";
+import { createEnvironmentBugReviewExpert } from "../review/runtime.js";
+import { publishBugReview } from "../github/review-publisher.js";
 
 export async function handlePullRequestEvent(
   context: Context<"pull_request">,
   providerOverride?: LlmProvider | null,
+  bugReviewExpertOverride?: BugReviewExpert | null,
 ): Promise<void> {
   const { action, pull_request, repository } = context.payload;
 
@@ -85,7 +90,9 @@ export async function handlePullRequestEvent(
           );
         }
       } catch (configurationError) {
-        provider = null;
+        // Une indisponibilité de PostgreSQL ne doit pas neutraliser la
+        // configuration locale.
+        provider = createEnvironmentLlmProvider(onUsage);
         context.log.warn(
           {
             ...logContext,
@@ -95,7 +102,7 @@ export async function handlePullRequestEvent(
                 ? configurationError.message
                 : configurationError,
           },
-          "Failed to load installation LLM configuration",
+          "Failed to load installation LLM configuration; using environment fallback",
         );
       }
     }
@@ -188,6 +195,8 @@ export async function handlePullRequestEvent(
 
     const mode = resolveLabelMode(process.env.LABEL_MODE);
     let appliedLabels: string[] = [];
+    let bugReview: BugReviewResult | null = null;
+    let bugReviewFailure: string | null = null;
 
     if (analysis && analysis.suggestions.length > 0) {
       const toApply = selectLabelsToApply(analysis.suggestions, mode);
@@ -239,12 +248,77 @@ export async function handlePullRequestEvent(
       }
     }
 
+    const isBugFix =
+      analysis?.suggestions.some(
+        (suggestion) => suggestion.name.trim().toLowerCase() === "bug",
+      ) ?? false;
+    if (isBugFix) {
+      const bugReviewExpert =
+        bugReviewExpertOverride === undefined
+          ? createEnvironmentBugReviewExpert()
+          : bugReviewExpertOverride;
+
+      if (bugReviewExpert) {
+        try {
+          bugReview = await bugReviewExpert.reviewBugFix(llmContext);
+          context.log.info(
+            {
+              ...logContext,
+              reviewVerdict: bugReview.verdict,
+              reviewFindings: bugReview.findings.length,
+            },
+            "Bug fix routed to specialized Gemini review expert",
+          );
+          if (bugReview.findings.length > 0) {
+            try {
+              await publishBugReview(context, prData, bugReview);
+              context.log.info(
+                {
+                  ...logContext,
+                  reviewFindings: bugReview.findings.length,
+                },
+                "Inline bug review published",
+              );
+            } catch (publishError) {
+              context.log.warn(
+                {
+                  ...logContext,
+                  error:
+                    publishError instanceof Error
+                      ? publishError.message
+                      : publishError,
+                },
+                "Failed to publish inline bug review",
+              );
+            }
+          }
+        } catch (reviewError) {
+          bugReviewFailure = describeLlmFailure(reviewError);
+          context.log.warn(
+            {
+              ...logContext,
+              error:
+                reviewError instanceof Error
+                  ? reviewError.message
+                  : reviewError,
+            },
+            "Specialized bug review failed",
+          );
+        }
+      } else {
+        bugReviewFailure =
+          "GEMINI_REVIEW_API_KEY ou GEMINI_API_KEY n'est pas configurée pour l'expert bug.";
+      }
+    }
+
     const commentBody = buildAnalysisComment(
       prData,
       llmContext,
       analysis,
       appliedLabels,
       llmFailureReason,
+      bugReview,
+      bugReviewFailure,
     );
     await upsertPullRequestComment(context, prData.number, commentBody);
 
