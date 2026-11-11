@@ -147,6 +147,8 @@ describe("adaptateurs LLM", () => {
       "gemini-test",
     ).reviewBugFix(buildPullRequestLlmContext(prData));
 
+    expect(result.intent).toBe("bug");
+
     expect(result).toMatchObject({ verdict: "approved", findings: [] });
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
       generationConfig: { responseMimeType: string };

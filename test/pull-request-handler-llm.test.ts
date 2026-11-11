@@ -225,6 +225,31 @@ describe("handlePullRequestEvent — chemin LLM", () => {
     );
   });
 
+  it("achemine une PR classée feature vers l'expert correspondant", async () => {
+    const ctx = createMockContext();
+    const classifier: LlmProvider = {
+      classifyPullRequest: vi.fn().mockResolvedValue({
+        suggestions: [
+          { name: "feature", confidence: 0.94, reason: "nouvel endpoint" },
+        ],
+        summary: "Ajoute un endpoint.",
+      }),
+    };
+    const expert: ReviewExpert = {
+      review: vi.fn().mockResolvedValue({
+        intent: "feature",
+        verdict: "approved",
+        summary: "La fonctionnalité est complète.",
+        findings: [],
+      }),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await handlePullRequestEvent(ctx as any, classifier, expert);
+
+    expect(expert.review).toHaveBeenCalledWith(expect.any(Object), "feature");
+  });
+
   it("n'appelle pas l'expert quand le classifieur retient un label sans revue", async () => {
     const ctx = createMockContext();
     const classifier: LlmProvider = {

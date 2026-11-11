@@ -8,7 +8,7 @@ describe("selectPrimaryReviewIntent", () => {
         { name: "feature", confidence: 0.96, reason: "nouvelle API" },
         { name: "bug", confidence: 0.91, reason: "corrige un crash" },
       ]),
-    ).toBe("bug");
+    ).toBe("feature");
   });
 
   it("ignore les labels sans expert enregistré", () => {

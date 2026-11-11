@@ -30,3 +30,21 @@ registerExpertPolicy({
   reviewPolicy: `- Verify whether the implementation actually fixes the described bug.
 - Report only concrete correctness defects, regressions or unhandled edge cases supported by the visible diff.`,
 });
+
+registerExpertPolicy({
+  intent: "feature",
+  roleTitle: "feature Pull Requests",
+  classifiedAs: "a new user-facing feature",
+  reviewPolicy: `- Verify whether the implemented change actually delivers the described feature.
+- Report missing edge cases, incomplete wiring, broken contracts or behaviour that contradicts the stated feature.
+- Do not treat supporting tests or docs as separate defects unless they make the feature incorrect.`,
+});
+
+registerExpertPolicy({
+  intent: "refactor",
+  roleTitle: "refactor Pull Requests",
+  classifiedAs: "a behaviour-preserving refactor",
+  reviewPolicy: `- Verify that the refactor preserves observable behaviour.
+- Report accidental behaviour changes, broken call sites, incomplete extractions or duplicated logic left behind.
+- Do not request stylistic rewrites unrelated to the refactor's stated goal.`,
+});
