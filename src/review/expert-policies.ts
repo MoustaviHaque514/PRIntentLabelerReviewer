@@ -66,3 +66,21 @@ registerExpertPolicy({
 - Report missing assertions, tests that cannot fail, brittle setup, or coverage holes in the changed suite.
 - Do not request production-code features unless the tests themselves are incorrect.`,
 });
+
+registerExpertPolicy({
+  intent: "ci-cd",
+  roleTitle: "CI/CD and build Pull Requests",
+  classifiedAs: "a CI/CD or build change",
+  reviewPolicy: `- Verify workflows, Dockerfiles and build scripts against the stated pipeline goal.
+- Report broken triggers, missing secrets usage, unsafe permissions, cache mistakes or commands that cannot succeed as written.
+- Do not request application feature work unless the pipeline change itself is incorrect.`,
+});
+
+registerExpertPolicy({
+  intent: "dependencies",
+  roleTitle: "dependency Pull Requests",
+  classifiedAs: "a dependency change",
+  reviewPolicy: `- Verify that version bumps, lockfile updates and package-manager migrations are consistent.
+- Report mismatched lockfiles, accidental major upgrades, missing peer constraints or unused dependency edits.
+- Do not treat changelog text from upstream packages as a bug fix implemented by this repository.`,
+});

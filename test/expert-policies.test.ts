@@ -15,4 +15,9 @@ describe("expert policies", () => {
     );
     expect(getExpertPolicy("tests")?.reviewPolicy).toContain("assertions");
   });
+
+  it("enregistre les experts ci-cd et dependencies", () => {
+    expect(getExpertPolicy("ci-cd")?.roleTitle).toContain("CI/CD");
+    expect(getExpertPolicy("dependencies")?.reviewPolicy).toContain("lockfile");
+  });
 });
