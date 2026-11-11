@@ -26,10 +26,10 @@ import type { LlmUsageMetrics } from "../llm/openai-compatible-provider.js";
 import { getLlmConfigurationService } from "../configuration/runtime.js";
 import { CLASSIFICATION_PROMPT_VERSION } from "../llm/prompt-builder.js";
 import { describeLlmFailure } from "../llm/failure-message.js";
-import type { BugReviewResult } from "../domain/code-review.js";
+import type { CodeReviewResult } from "../domain/code-review.js";
 import type { BugReviewExpert } from "../review/bug-review-expert.js";
 import { createEnvironmentBugReviewExpert } from "../review/runtime.js";
-import { publishBugReview } from "../github/review-publisher.js";
+import { publishIntentReview } from "../github/review-publisher.js";
 
 export async function handlePullRequestEvent(
   context: Context<"pull_request">,
@@ -195,8 +195,8 @@ export async function handlePullRequestEvent(
 
     const mode = resolveLabelMode(process.env.LABEL_MODE);
     let appliedLabels: string[] = [];
-    let bugReview: BugReviewResult | null = null;
-    let bugReviewFailure: string | null = null;
+    let intentReview: CodeReviewResult | null = null;
+    let intentReviewFailure: string | null = null;
 
     if (analysis && analysis.suggestions.length > 0) {
       const toApply = selectLabelsToApply(analysis.suggestions, mode);
@@ -260,24 +260,25 @@ export async function handlePullRequestEvent(
 
       if (bugReviewExpert) {
         try {
-          bugReview = await bugReviewExpert.reviewBugFix(llmContext);
+          intentReview = await bugReviewExpert.reviewBugFix(llmContext);
           context.log.info(
             {
               ...logContext,
-              reviewVerdict: bugReview.verdict,
-              reviewFindings: bugReview.findings.length,
+              reviewIntent: intentReview.intent,
+              reviewVerdict: intentReview.verdict,
+              reviewFindings: intentReview.findings.length,
             },
-            "Bug fix routed to specialized Gemini review expert",
+            "Pull request routed to specialized Gemini review expert",
           );
-          if (bugReview.findings.length > 0) {
+          if (intentReview.findings.length > 0) {
             try {
-              await publishBugReview(context, prData, bugReview);
+              await publishIntentReview(context, prData, intentReview);
               context.log.info(
                 {
                   ...logContext,
-                  reviewFindings: bugReview.findings.length,
+                  reviewFindings: intentReview.findings.length,
                 },
-                "Inline bug review published",
+                "Inline intent review published",
               );
             } catch (publishError) {
               context.log.warn(
@@ -293,7 +294,7 @@ export async function handlePullRequestEvent(
             }
           }
         } catch (reviewError) {
-          bugReviewFailure = describeLlmFailure(reviewError);
+          intentReviewFailure = describeLlmFailure(reviewError);
           context.log.warn(
             {
               ...logContext,
@@ -302,12 +303,12 @@ export async function handlePullRequestEvent(
                   ? reviewError.message
                   : reviewError,
             },
-            "Specialized bug review failed",
+            "Specialized intent review failed",
           );
         }
       } else {
-        bugReviewFailure =
-          "GEMINI_REVIEW_API_KEY ou GEMINI_API_KEY n'est pas configurée pour l'expert bug.";
+        intentReviewFailure =
+          "GEMINI_REVIEW_API_KEY ou GEMINI_API_KEY n'est pas configurée pour l'expert de revue.";
       }
     }
 
@@ -317,8 +318,8 @@ export async function handlePullRequestEvent(
       analysis,
       appliedLabels,
       llmFailureReason,
-      bugReview,
-      bugReviewFailure,
+      intentReview,
+      intentReviewFailure,
     );
     await upsertPullRequestComment(context, prData.number, commentBody);
 

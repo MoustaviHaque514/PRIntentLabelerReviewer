@@ -199,6 +199,7 @@ describe("handlePullRequestEvent — chemin LLM", () => {
     const ctx = createMockContext();
     const expert: BugReviewExpert = {
       reviewBugFix: vi.fn().mockResolvedValue({
+        intent: "bug",
         verdict: "approved",
         summary: "La correction est valide.",
         findings: [],

@@ -12,7 +12,7 @@ import {
   buildBugReviewPrompt,
   buildBugReviewSystemPrompt,
 } from "./bug-review-prompt.js";
-import { parseBugReviewResult } from "./review-parser.js";
+import { parseReviewResult } from "./review-parser.js";
 
 type GeminiReviewResponse = {
   candidates?: Array<{
@@ -69,7 +69,7 @@ export class GeminiBugReviewExpert implements BugReviewExpert {
     if (!content.trim()) {
       throw new LlmEmptyResponseError("Gemini bug-review expert");
     }
-    return parseBugReviewResult(content, context);
+    return parseReviewResult(content, context, "bug");
   }
 
   private async generateContent(

@@ -9,8 +9,11 @@ export type CodeReviewFinding = {
   suggestion: string;
 };
 
-export type BugReviewResult = {
+export type CodeReviewResult = {
+  intent: string;
   verdict: "approved" | "changes-requested";
   summary: string;
   findings: CodeReviewFinding[];
 };
+
+export type BugReviewResult = CodeReviewResult;

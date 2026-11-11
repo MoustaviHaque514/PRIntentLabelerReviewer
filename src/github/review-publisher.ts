@@ -1,10 +1,10 @@
 import type { Context } from "probot";
-import type { BugReviewResult } from "../domain/code-review.js";
+import type { CodeReviewResult } from "../domain/code-review.js";
 import type { PullRequestData } from "../domain/pull-request-data.js";
 import { listAllPages } from "./pagination.js";
 import { isCommentOwnedByApp } from "./pr-commenter.js";
 
-const REVIEW_MARKER_PREFIX = "<!-- llm-pr-bug-review";
+const REVIEW_MARKER_PREFIX = "<!-- llm-pr-intent-review";
 
 type ReviewCommentIdentity = {
   body?: string | null;
@@ -19,14 +19,14 @@ function safeReviewText(value: string): string {
     .trim();
 }
 
-export async function publishBugReview(
+export async function publishIntentReview(
   context: Context<"pull_request">,
   prData: PullRequestData,
-  review: BugReviewResult,
+  review: CodeReviewResult,
 ): Promise<void> {
   if (review.findings.length === 0) return;
 
-  const marker = `${REVIEW_MARKER_PREFIX} sha=${prData.headSha} -->`;
+  const marker = `${REVIEW_MARKER_PREFIX} intent=${review.intent} sha=${prData.headSha} -->`;
   const existing = await listAllPages<
     ReviewCommentIdentity,
     {
@@ -50,7 +50,7 @@ export async function publishBugReview(
   ) {
     context.log.info(
       { pullNumber: prData.number, headSha: prData.headSha },
-      "Specialized bug review already published",
+      "Specialized intent review already published",
     );
     return;
   }
@@ -74,7 +74,7 @@ export async function publishBugReview(
     pull_number: prData.number,
     commit_id: prData.headSha,
     event: "REQUEST_CHANGES",
-    body: `Revue spécialisée — Bug
+    body: `Revue spécialisée — ${review.intent}
 
 ${safeReviewText(review.summary)}`,
     comments,

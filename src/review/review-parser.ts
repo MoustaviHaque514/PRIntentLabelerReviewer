@@ -1,6 +1,6 @@
 import type {
-  BugReviewResult,
   CodeReviewFinding,
+  CodeReviewResult,
   ReviewSeverity,
 } from "../domain/code-review.js";
 import type { PullRequestLlmContext } from "../domain/pull-request-data.js";
@@ -116,10 +116,11 @@ function normalizeFinding(
   };
 }
 
-export function parseBugReviewResult(
+export function parseReviewResult(
   content: string,
   context: PullRequestLlmContext,
-): BugReviewResult {
+  intent: string,
+): CodeReviewResult {
   const parsed = extractJsonObject(content);
   const linesByFile = new Map(
     context.selectedFiles.map(({ file }) => [
@@ -134,6 +135,7 @@ export function parseBugReviewResult(
     : [];
 
   return {
+    intent,
     verdict: findings.length === 0 ? "approved" : "changes-requested",
     summary:
       typeof parsed.summary === "string" && parsed.summary.trim()
@@ -143,4 +145,11 @@ export function parseBugReviewResult(
           : "La correction nécessite des changements.",
     findings,
   };
+}
+
+export function parseBugReviewResult(
+  content: string,
+  context: PullRequestLlmContext,
+): CodeReviewResult {
+  return parseReviewResult(content, context, "bug");
 }

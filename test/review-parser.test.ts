@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PullRequestLlmContext } from "../src/domain/pull-request-data.js";
-import { parseBugReviewResult } from "../src/review/review-parser.js";
+import { parseReviewResult } from "../src/review/review-parser.js";
 
 function contextWithPatch(): PullRequestLlmContext {
   return {
@@ -51,9 +51,9 @@ function contextWithPatch(): PullRequestLlmContext {
   };
 }
 
-describe("parseBugReviewResult", () => {
+describe("parseReviewResult", () => {
   it("conserve un constat ancré sur une ligne modifiée visible", () => {
-    const result = parseBugReviewResult(
+    const result = parseReviewResult(
       JSON.stringify({
         summary: "Le calcul reste incorrect.",
         findings: [
@@ -68,14 +68,16 @@ describe("parseBugReviewResult", () => {
         ],
       }),
       contextWithPatch(),
+      "bug",
     );
 
+    expect(result.intent).toBe("bug");
     expect(result.verdict).toBe("changes-requested");
     expect(result.findings).toHaveLength(1);
   });
 
   it("rejette les fichiers et lignes inventés par le modèle", () => {
-    const result = parseBugReviewResult(
+    const result = parseReviewResult(
       JSON.stringify({
         summary: "Deux problèmes.",
         findings: [
@@ -98,8 +100,13 @@ describe("parseBugReviewResult", () => {
         ],
       }),
       contextWithPatch(),
+      "feature",
     );
 
-    expect(result).toMatchObject({ verdict: "approved", findings: [] });
+    expect(result).toMatchObject({
+      intent: "feature",
+      verdict: "approved",
+      findings: [],
+    });
   });
 });

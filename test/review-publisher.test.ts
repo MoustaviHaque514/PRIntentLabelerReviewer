@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BugReviewResult } from "../src/domain/code-review.js";
+import type { CodeReviewResult } from "../src/domain/code-review.js";
 import type { PullRequestData } from "../src/domain/pull-request-data.js";
-import { publishBugReview } from "../src/github/review-publisher.js";
+import { publishIntentReview } from "../src/github/review-publisher.js";
 
 const prData = {
   owner: "org",
@@ -10,7 +10,8 @@ const prData = {
   headSha: "abc123",
 } as PullRequestData;
 
-const review: BugReviewResult = {
+const review: CodeReviewResult = {
+  intent: "bug",
   verdict: "changes-requested",
   summary: "Le calcul reste incorrect.",
   findings: [
@@ -41,17 +42,18 @@ afterEach(() => {
   delete process.env.APP_ID;
 });
 
-describe("publishBugReview", () => {
+describe("publishIntentReview", () => {
   it("publie une review Changes requested avec un commentaire inline", async () => {
     const context = createContext();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await publishBugReview(context as any, prData, review);
+    await publishIntentReview(context as any, prData, review);
 
     expect(context.octokit.pulls.createReview).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "REQUEST_CHANGES",
         commit_id: "abc123",
+        body: expect.stringContaining("Revue spécialisée — bug"),
         comments: [
           expect.objectContaining({
             path: "src/cart-total.ts",
@@ -68,14 +70,14 @@ describe("publishBugReview", () => {
     process.env.APP_ID = "42";
     const context = createContext([
       {
-        body: "<!-- llm-pr-bug-review sha=abc123 -->\nDéjà publié",
+        body: "<!-- llm-pr-intent-review intent=bug sha=abc123 -->\nDéjà publié",
         user: { type: "Bot" },
         performed_via_github_app: { id: 42 },
       },
     ]);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await publishBugReview(context as any, prData, review);
+    await publishIntentReview(context as any, prData, review);
 
     expect(context.octokit.pulls.createReview).not.toHaveBeenCalled();
   });

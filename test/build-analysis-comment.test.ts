@@ -154,13 +154,14 @@ describe("buildAnalysisComment", () => {
       [],
       null,
       {
+        intent: "bug",
         verdict: "approved",
         summary: "La correction couvre correctement le cas limite.",
         findings: [],
       },
     );
 
-    expect(result).toContain("Revue spécialisée — Bug");
+    expect(result).toContain("Revue spécialisée — bug");
     expect(result).toContain("Verdict : correction validée");
     expect(result).toContain("Aucun changement supplémentaire");
   });
@@ -173,6 +174,7 @@ describe("buildAnalysisComment", () => {
       [],
       null,
       {
+        intent: "feature",
         verdict: "changes-requested",
         summary: "Un cas limite reste incorrect.",
         findings: [
@@ -188,6 +190,7 @@ describe("buildAnalysisComment", () => {
       },
     );
 
+    expect(result).toContain("Revue spécialisée — feature");
     expect(result).toContain("Verdict : changements demandés");
     expect(result).toContain(
       "https://github.com/org/test-repo/blob/abc123/src/auth/login.ts#L4",

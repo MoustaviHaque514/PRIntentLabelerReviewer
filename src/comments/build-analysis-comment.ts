@@ -3,7 +3,7 @@ import type {
   PullRequestLlmContext,
 } from "../domain/pull-request-data.js";
 import type { PullRequestAnalysis } from "../domain/llm-analysis.js";
-import type { BugReviewResult } from "../domain/code-review.js";
+import type { CodeReviewResult } from "../domain/code-review.js";
 import {
   BOT_COMMENT_MARKER,
   formatFileScore,
@@ -22,8 +22,8 @@ export function buildAnalysisComment(
   analysis: PullRequestAnalysis | null = null,
   appliedLabels: string[] = [],
   llmFailureReason: string | null = null,
-  bugReview: BugReviewResult | null = null,
-  bugReviewFailure: string | null = null,
+  intentReview: CodeReviewResult | null = null,
+  intentReviewFailure: string | null = null,
 ): string {
   const selected = context.selectedFiles.slice(0, MAX_FILES_IN_COMMENT);
 
@@ -61,9 +61,9 @@ ${selectedTable}`;
   const dataBlock = analysis
     ? `\n${renderAnalysisDataBlock(analysis, prData.headSha)}`
     : "";
-  const bugReviewSection =
-    bugReview || bugReviewFailure
-      ? `\n${buildBugReviewSection(prData, bugReview, bugReviewFailure)}`
+  const intentReviewSection =
+    intentReview || intentReviewFailure
+      ? `\n${buildIntentReviewSection(prData, intentReview, intentReviewFailure)}`
       : "";
 
   return `${BOT_COMMENT_MARKER}
@@ -85,20 +85,21 @@ L'application a bien reçu et analysé cette Pull Request.
 
 ${filesSection}
 
-${labelsSection}${summarySection}${bugReviewSection}${dataBlock}`;
+${labelsSection}${summarySection}${intentReviewSection}${dataBlock}`;
 }
 
-function buildBugReviewSection(
+function buildIntentReviewSection(
   prData: PullRequestData,
-  review: BugReviewResult | null,
+  review: CodeReviewResult | null,
   failure: string | null,
 ): string {
+  const intentLabel = review?.intent ?? "intent";
   if (!review) {
-    return `### Revue spécialisée — Bug\n\n> La revue Gemini n'a pas abouti : ${escapeModelText(failure ?? "erreur inconnue")}\n`;
+    return `### Revue spécialisée — ${intentLabel}\n\n> La revue Gemini n'a pas abouti : ${escapeModelText(failure ?? "erreur inconnue")}\n`;
   }
 
   if (review.findings.length === 0) {
-    return `### Revue spécialisée — Bug\n\n**Verdict : correction validée**\n\n${escapeModelText(review.summary)}\n\n> Aucun changement supplémentaire n'est demandé pour le diff analysé (\`${prData.headSha.slice(0, 7)}\`).\n`;
+    return `### Revue spécialisée — ${review.intent}\n\n**Verdict : correction validée**\n\n${escapeModelText(review.summary)}\n\n> Aucun changement supplémentaire n'est demandé pour le diff analysé (\`${prData.headSha.slice(0, 7)}\`).\n`;
   }
 
   const findings = review.findings
@@ -113,7 +114,7 @@ function buildBugReviewSection(
     })
     .join("\n\n");
 
-  return `### Revue spécialisée — Bug\n\n**Verdict : changements demandés**\n\n${escapeModelText(review.summary)}\n\n${findings}\n`;
+  return `### Revue spécialisée — ${review.intent}\n\n**Verdict : changements demandés**\n\n${escapeModelText(review.summary)}\n\n${findings}\n`;
 }
 
 function buildLabelsSection(
