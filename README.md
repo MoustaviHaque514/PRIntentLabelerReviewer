@@ -16,9 +16,11 @@ Lorsqu'une Pull Request est ouverte, modifiée ou synchronisée, l'application :
 4. analyse la PR avec le fournisseur LLM configuré pour l'installation;
 5. publie ou met à jour un commentaire avec les labels proposés, leur niveau
    de confiance et une justification;
-6. si l'intention `bug` est retenue, route le diff vers l'expert Gemini et
-   ajoute son verdict au même commentaire;
-7. applique éventuellement les labels selon le mode configuré.
+6. retient le label d'intention de plus haute confiance et, s'il possède un
+   expert, route le diff vers cet expert Gemini;
+7. ajoute le verdict au commentaire Conversation et, en cas d'erreurs,
+   publie une review GitHub inline;
+8. applique éventuellement les labels selon le mode configuré.
 
 ## Stack
 
@@ -40,7 +42,9 @@ Lorsqu'une Pull Request est ouverte, modifiée ou synchronisée, l'application :
 - chiffrement des clés API avec AES-256-GCM;
 - modification, rotation et suppression d'une configuration;
 - commentaire de PR mis à jour sans duplication;
-- revue spécialisée Gemini pour les PR classées `bug`;
+- revue spécialisée Gemini pour un label à la fois (`bug`, `feature`,
+  `refactor`, `documentation`, `tests`, `ci-cd`, `dependencies`,
+  `performance`, `security`, `breaking-change`);
 - commentaires inline GitHub lorsque des corrections sont proposées;
 - modes manuel et automatique d'application des labels.
 
@@ -69,6 +73,15 @@ serveur.
 
 Le fonctionnement détaillé est documenté dans
 [`docs/llm-provider-configuration.md`](docs/llm-provider-configuration.md).
+
+## Revue spécialisée par intention
+
+Après la classification, un seul expert est appelé : celui du label retenu
+avec la plus haute confiance. Chaque expert a une politique de revue
+distincte. S'il ne trouve aucun problème, le commentaire Conversation
+affiche un verdict positif. S'il trouve des erreurs vérifiables dans le
+diff, une review GitHub `Changes requested` est publiée avec des
+commentaires inline.
 
 ## Modes d'application des labels
 
