@@ -27,14 +27,15 @@ import { getLlmConfigurationService } from "../configuration/runtime.js";
 import { CLASSIFICATION_PROMPT_VERSION } from "../llm/prompt-builder.js";
 import { describeLlmFailure } from "../llm/failure-message.js";
 import type { CodeReviewResult } from "../domain/code-review.js";
-import type { BugReviewExpert } from "../review/bug-review-expert.js";
-import { createEnvironmentBugReviewExpert } from "../review/runtime.js";
+import type { ReviewExpert } from "../review/review-expert.js";
+import { createEnvironmentReviewExpert } from "../review/runtime.js";
+import { selectPrimaryReviewIntent } from "../review/select-review-intent.js";
 import { publishIntentReview } from "../github/review-publisher.js";
 
 export async function handlePullRequestEvent(
   context: Context<"pull_request">,
   providerOverride?: LlmProvider | null,
-  bugReviewExpertOverride?: BugReviewExpert | null,
+  reviewExpertOverride?: ReviewExpert | null,
 ): Promise<void> {
   const { action, pull_request, repository } = context.payload;
 
@@ -248,19 +249,18 @@ export async function handlePullRequestEvent(
       }
     }
 
-    const isBugFix =
-      analysis?.suggestions.some(
-        (suggestion) => suggestion.name.trim().toLowerCase() === "bug",
-      ) ?? false;
-    if (isBugFix) {
-      const bugReviewExpert =
-        bugReviewExpertOverride === undefined
-          ? createEnvironmentBugReviewExpert()
-          : bugReviewExpertOverride;
+    const reviewIntent = analysis
+      ? selectPrimaryReviewIntent(analysis.suggestions)
+      : null;
+    if (reviewIntent) {
+      const reviewExpert =
+        reviewExpertOverride === undefined
+          ? createEnvironmentReviewExpert()
+          : reviewExpertOverride;
 
-      if (bugReviewExpert) {
+      if (reviewExpert) {
         try {
-          intentReview = await bugReviewExpert.reviewBugFix(llmContext);
+          intentReview = await reviewExpert.review(llmContext, reviewIntent);
           context.log.info(
             {
               ...logContext,

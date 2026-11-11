@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { handlePullRequestEvent } from "../src/handlers/pull-request-handler.js";
 import type { LlmProvider } from "../src/llm/llm-provider.js";
 import { toAiLabelName } from "../src/labels/ai-label-name.js";
-import type { BugReviewExpert } from "../src/review/bug-review-expert.js";
+import type { ReviewExpert } from "../src/review/review-expert.js";
 
 function createMockContext() {
   return {
@@ -197,8 +197,16 @@ describe("handlePullRequestEvent — chemin LLM", () => {
 
   it("achemine une PR classée bug vers l'expert spécialisé", async () => {
     const ctx = createMockContext();
-    const expert: BugReviewExpert = {
-      reviewBugFix: vi.fn().mockResolvedValue({
+    const classifier: LlmProvider = {
+      classifyPullRequest: vi.fn().mockResolvedValue({
+        suggestions: [
+          { name: "bug", confidence: 0.95, reason: "corrige un crash" },
+        ],
+        summary: "Corrige un crash.",
+      }),
+    };
+    const expert: ReviewExpert = {
+      review: vi.fn().mockResolvedValue({
         intent: "bug",
         verdict: "approved",
         summary: "La correction est valide.",
@@ -207,9 +215,9 @@ describe("handlePullRequestEvent — chemin LLM", () => {
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await handlePullRequestEvent(ctx as any, mockProvider(), expert);
+    await handlePullRequestEvent(ctx as any, classifier, expert);
 
-    expect(expert.reviewBugFix).toHaveBeenCalledOnce();
+    expect(expert.review).toHaveBeenCalledWith(expect.any(Object), "bug");
     expect(ctx.octokit.issues.createComment).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.stringContaining("Verdict : correction validée"),
@@ -217,23 +225,23 @@ describe("handlePullRequestEvent — chemin LLM", () => {
     );
   });
 
-  it("n'appelle pas l'expert bug quand le classifieur retient seulement feature", async () => {
+  it("n'appelle pas l'expert quand le classifieur retient un label sans revue", async () => {
     const ctx = createMockContext();
     const classifier: LlmProvider = {
       classifyPullRequest: vi.fn().mockResolvedValue({
         suggestions: [
-          { name: "feature", confidence: 0.95, reason: "nouvel endpoint" },
+          { name: "enhancement", confidence: 0.95, reason: "nouvel endpoint" },
         ],
         summary: "Ajoute un endpoint.",
       }),
     };
-    const expert: BugReviewExpert = {
-      reviewBugFix: vi.fn(),
+    const expert: ReviewExpert = {
+      review: vi.fn(),
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await handlePullRequestEvent(ctx as any, classifier, expert);
 
-    expect(expert.reviewBugFix).not.toHaveBeenCalled();
+    expect(expert.review).not.toHaveBeenCalled();
   });
 });
