@@ -2,7 +2,10 @@ export function containsRepeatedValue(
   values: readonly string[],
   expected: string,
 ): boolean {
-  return values.some((value) =>
-    values.some((candidate) => candidate === value && value === expected),
-  );
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (value === expected && seen.has(value)) return true;
+    seen.add(value);
+  }
+  return false;
 }
