@@ -3,6 +3,12 @@ import type { PullRequestAnalysis } from "../domain/llm-analysis.js";
 import { parsePullRequestAnalysis } from "./classification-parser.js";
 import type { LlmProvider } from "./llm-provider.js";
 import {
+  generateTextSafely,
+  type GenerationSchema,
+  type TextGenerator,
+  type TextGenerationRequest,
+} from "./text-generator.js";
+import {
   LlmEmptyResponseError,
   LlmProviderRequestError,
   parseRetryAfterMs,
@@ -54,7 +60,28 @@ const ANALYSIS_SCHEMA = {
   required: ["suggestions", "summary"],
 };
 
-export class GeminiProvider implements LlmProvider {
+function toGeminiSchema(schema: GenerationSchema): Record<string, unknown> {
+  const convertedSchema: Record<string, unknown> = {
+    ...schema,
+    type: schema.type.toUpperCase(),
+  };
+
+  if (schema.properties) {
+    convertedSchema.properties = Object.fromEntries(
+      Object.entries(schema.properties).map(([name, propertySchema]) => [
+        name,
+        toGeminiSchema(propertySchema),
+      ]),
+    );
+  }
+  if (schema.items) {
+    convertedSchema.items = toGeminiSchema(schema.items);
+  }
+
+  return convertedSchema;
+}
+
+export class GeminiProvider implements LlmProvider, TextGenerator {
   public readonly tokenBudget: LlmTokenBudget;
 
   constructor(
@@ -65,6 +92,19 @@ export class GeminiProvider implements LlmProvider {
     tokenBudget?: LlmTokenBudget,
   ) {
     this.tokenBudget = tokenBudget ?? resolveLlmTokenBudget("gemini", model);
+  }
+
+  async generate(request: TextGenerationRequest): Promise<string> {
+    return generateTextSafely("Gemini", request, () =>
+      this.generateContent(
+        request.system,
+        request.prompt,
+        request.jsonSchema !== undefined,
+        request.maxOutputTokens,
+        estimateTokens(request.system) + estimateTokens(request.prompt),
+        request.jsonSchema ? toGeminiSchema(request.jsonSchema) : undefined,
+      ),
+    );
   }
 
   async classifyPullRequest(
@@ -106,6 +146,7 @@ export class GeminiProvider implements LlmProvider {
     structured: boolean,
     maxOutputTokens: number,
     estimatedPromptTokens = 0,
+    responseSchema: Record<string, unknown> = ANALYSIS_SCHEMA,
   ): Promise<string> {
     const model = this.model.replace(/^models\//, "");
     const generationConfig: Record<string, unknown> = {
@@ -114,7 +155,7 @@ export class GeminiProvider implements LlmProvider {
 
     if (structured) {
       generationConfig.responseMimeType = "application/json";
-      generationConfig.responseSchema = ANALYSIS_SCHEMA;
+      generationConfig.responseSchema = responseSchema;
     }
 
     const response = await fetch(

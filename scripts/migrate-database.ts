@@ -1,7 +1,6 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import { Pool } from "pg";
 import "dotenv/config";
+import { applyDatabaseMigrations } from "../src/database/migrations.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -17,12 +16,10 @@ const pool = new Pool({
 });
 
 try {
-  const migration = await readFile(
-    resolve("db/migrations/001_llm_configuration.sql"),
-    "utf8",
-  );
-  await pool.query(migration);
-  console.log("Migration 001_llm_configuration appliquée.");
+  const applied = await applyDatabaseMigrations(pool);
+  for (const filename of applied) {
+    console.log(`Migration ${filename} appliquée.`);
+  }
 } finally {
   await pool.end();
 }

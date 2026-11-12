@@ -3,6 +3,11 @@ import type { PullRequestAnalysis } from "../domain/llm-analysis.js";
 import { parsePullRequestAnalysis } from "./classification-parser.js";
 import type { LlmProvider } from "./llm-provider.js";
 import {
+  generateTextSafely,
+  type TextGenerator,
+  type TextGenerationRequest,
+} from "./text-generator.js";
+import {
   LlmEmptyResponseError,
   LlmProviderRequestError,
   parseRetryAfterMs,
@@ -60,11 +65,24 @@ type ChatCompletionResponse = {
   };
 };
 
-export class OpenAiCompatibleProvider implements LlmProvider {
+export class OpenAiCompatibleProvider implements LlmProvider, TextGenerator {
   constructor(private readonly options: OpenAiCompatibleOptions) {}
 
   get tokenBudget(): LlmTokenBudget {
     return this.options.tokenBudget ?? defaultLlmTokenBudget();
+  }
+
+  async generate(request: TextGenerationRequest): Promise<string> {
+    return generateTextSafely(this.options.providerName, request, () =>
+      this.createCompletion(
+        [
+          { role: "system", content: request.system },
+          { role: "user", content: request.prompt },
+        ],
+        request.jsonSchema !== undefined,
+        request.maxOutputTokens,
+      ),
+    );
   }
 
   async classifyPullRequest(
