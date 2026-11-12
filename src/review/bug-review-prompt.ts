@@ -3,10 +3,7 @@ import type { PullRequestLlmContext } from "../domain/pull-request-data.js";
 const UNTRUSTED_MARKER = /-{2,}\s*(?:BEGIN|END)\s+UNTRUSTED\b/gi;
 
 function neutralize(value: string | undefined): string {
-  return (value ?? "").replace(
-    UNTRUSTED_MARKER,
-    "[untrusted-marker-removed]",
-  );
+  return (value ?? "").replace(UNTRUSTED_MARKER, "[untrusted-marker-removed]");
 }
 
 export function buildBugReviewSystemPrompt(): string {

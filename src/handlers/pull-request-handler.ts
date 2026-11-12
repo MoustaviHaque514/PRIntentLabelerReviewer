@@ -28,7 +28,10 @@ import { CLASSIFICATION_PROMPT_VERSION } from "../llm/prompt-builder.js";
 import { describeLlmFailure } from "../llm/failure-message.js";
 import type { BugReviewResult } from "../domain/code-review.js";
 import type { BugReviewExpert } from "../review/bug-review-expert.js";
-import { createEnvironmentBugReviewExpert } from "../review/runtime.js";
+import {
+  BugReviewConfigurationError,
+  resolveBugReviewExpert,
+} from "../review/runtime.js";
 import { publishBugReview } from "../github/review-publisher.js";
 
 export async function handlePullRequestEvent(
@@ -253,13 +256,31 @@ export async function handlePullRequestEvent(
         (suggestion) => suggestion.name.trim().toLowerCase() === "bug",
       ) ?? false;
     if (isBugFix) {
-      const bugReviewExpert =
-        bugReviewExpertOverride === undefined
-          ? createEnvironmentBugReviewExpert()
-          : bugReviewExpertOverride;
-
-      if (bugReviewExpert) {
-        try {
+      try {
+        let bugReviewExpert = bugReviewExpertOverride;
+        if (bugReviewExpertOverride === undefined) {
+          const selection = await resolveBugReviewExpert(
+            context.payload.installation?.id,
+            (usage) =>
+              context.log.info(
+                {
+                  ...logContext,
+                  installationId: context.payload.installation?.id,
+                  intention: "bug",
+                  ...usage,
+                },
+                "Expert token usage measured",
+              ),
+          );
+          bugReviewExpert = selection?.expert ?? null;
+          if (selection) {
+            context.log.info(
+              { ...logContext, ...selection.metadata },
+              "Bug review configuration selected",
+            );
+          }
+        }
+        if (bugReviewExpert) {
           bugReview = await bugReviewExpert.reviewBugFix(llmContext);
           context.log.info(
             {
@@ -267,7 +288,7 @@ export async function handlePullRequestEvent(
               reviewVerdict: bugReview.verdict,
               reviewFindings: bugReview.findings.length,
             },
-            "Bug fix routed to specialized Gemini review expert",
+            "Bug fix routed to specialized review expert",
           );
           if (bugReview.findings.length > 0) {
             try {
@@ -292,22 +313,24 @@ export async function handlePullRequestEvent(
               );
             }
           }
-        } catch (reviewError) {
-          bugReviewFailure = describeLlmFailure(reviewError);
-          context.log.warn(
-            {
-              ...logContext,
-              error:
-                reviewError instanceof Error
-                  ? reviewError.message
-                  : reviewError,
-            },
-            "Specialized bug review failed",
-          );
+        } else {
+          bugReviewFailure =
+            "Aucune configuration disponible pour l’expert Bug. Configure cet expert dans les paramètres de l’installation.";
         }
-      } else {
+      } catch (reviewError) {
         bugReviewFailure =
-          "GEMINI_REVIEW_API_KEY ou GEMINI_API_KEY n'est pas configurée pour l'expert bug.";
+          reviewError instanceof BugReviewConfigurationError
+            ? reviewError.message
+            : describeLlmFailure(reviewError);
+        context.log.warn(
+          {
+            ...logContext,
+            installationId: context.payload.installation?.id,
+            intention: "bug",
+            error: bugReviewFailure,
+          },
+          "Specialized bug review failed",
+        );
       }
     }
 

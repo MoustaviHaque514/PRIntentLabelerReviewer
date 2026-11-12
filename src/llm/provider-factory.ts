@@ -12,6 +12,27 @@ import {
   type LlmProviderConfiguration,
 } from "./provider-configuration.js";
 import { resolveLlmTokenBudget } from "./model-budget.js";
+import type { TextGenerator } from "./text-generator.js";
+
+export function createTextGenerator(
+  configuration: LlmProviderConfiguration,
+  onUsage?: (metrics: LlmUsageMetrics) => void,
+): TextGenerator {
+  if (!["anthropic", "openai", "gemini"].includes(configuration.provider)) {
+    throw new Error(
+      "Ce fournisseur ne prend pas en charge la génération pour les experts.",
+    );
+  }
+  const provider = createLlmProvider(configuration, onUsage);
+  if (
+    provider instanceof AnthropicProvider ||
+    provider instanceof OpenAiCompatibleProvider ||
+    provider instanceof GeminiProvider
+  ) {
+    return provider;
+  }
+  throw new Error("Le générateur demandé est indisponible.");
+}
 
 export function createLlmProvider(
   configuration: LlmProviderConfiguration,
@@ -47,7 +68,13 @@ export function createLlmProvider(
         tokenBudget,
       });
     case "anthropic":
-      return new AnthropicProvider(apiKey, model, baseUrl, tokenBudget);
+      return new AnthropicProvider(
+        apiKey,
+        model,
+        baseUrl,
+        tokenBudget,
+        onUsage,
+      );
     case "gemini":
       return new GeminiProvider(apiKey, model, baseUrl, onUsage, tokenBudget);
     case "xai":

@@ -14,7 +14,7 @@ type FileLines = {
 const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
 const SEVERITIES = new Set<ReviewSeverity>(["info", "warning", "error"]);
 
-function extractJsonObject(content: string): Record<string, unknown> {
+export function extractJsonObject(content: string): Record<string, unknown> {
   const trimmed = content
     .trim()
     .replace(/^```(?:json)?\s*/i, "")

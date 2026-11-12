@@ -13,10 +13,7 @@ type ReviewCommentIdentity = {
 };
 
 function safeReviewText(value: string): string {
-  return value
-    .replace(/@/g, "@\u200b")
-    .replace(/<!--/g, "&lt;!--")
-    .trim();
+  return value.replace(/@/g, "@\u200b").replace(/<!--/g, "&lt;!--").trim();
 }
 
 export async function publishBugReview(
