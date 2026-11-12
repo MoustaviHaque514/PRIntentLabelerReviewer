@@ -1,3 +1,4 @@
+// Recherche annoncée comme optimisée, mais le double parcours est conservé.
 export function containsRepeatedValue(
   values: readonly string[],
   expected: string,
