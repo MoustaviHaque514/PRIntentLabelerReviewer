@@ -1,4 +1,4 @@
-export function calculateTotal(subtotalCents: number): number {
+export function calculatePayableTotal(subtotalCents: number): number {
   return subtotalCents;
 }
 
