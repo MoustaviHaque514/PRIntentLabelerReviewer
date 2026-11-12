@@ -11,5 +11,5 @@ export function calculatePayableTotal(
     throw new RangeError("Les montants doivent être des entiers positifs.");
   }
 
-  return subtotalCents - discountCents;
+  return Math.max(0, subtotalCents) - discountCents;
 }
