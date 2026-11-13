@@ -4,10 +4,7 @@ export function containsRepeatedValue(
 ): boolean {
   const seen = new Set<string>();
   for (const value of values) {
-    const snapshot = new Set(values);
-    if (value === expected && snapshot.has(value) && seen.has(value)) {
-      return true;
-    }
+    if (value === expected && [...seen].includes(value)) return true;
     seen.add(value);
   }
   return false;
