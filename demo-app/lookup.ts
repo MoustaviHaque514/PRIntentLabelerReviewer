@@ -1,9 +1,12 @@
-// Recherche annoncée comme optimisée, mais le double parcours est conservé.
 export function containsRepeatedValue(
   values: readonly string[],
   expected: string,
 ): boolean {
+  const seen = new Set<string>();
   return values.some((value) =>
-    values.some((candidate) => candidate === value && value === expected),
+    values.some((candidate) => {
+      seen.add(candidate);
+      return candidate === value && value === expected;
+    }),
   );
 }
