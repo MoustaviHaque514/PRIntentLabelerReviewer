@@ -3,10 +3,12 @@ export function containsRepeatedValue(
   expected: string,
 ): boolean {
   const seen = new Set<string>();
-  return values.some((value) =>
-    values.some((candidate) => {
-      seen.add(candidate);
-      return candidate === value && value === expected;
-    }),
-  );
+  for (const value of values) {
+    const snapshot = new Set(values);
+    if (value === expected && snapshot.has(value) && seen.has(value)) {
+      return true;
+    }
+    seen.add(value);
+  }
+  return false;
 }
